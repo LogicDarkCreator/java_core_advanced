@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    <Properties>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
+        <Property name="LOG_DIR">logs</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- Консольный аппендер (только для критических сообщений) -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss} %-5level - %msg%n"/>
+            <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+        </Console>
+
+        <!-- Аппендер для запросов -->
+        <RollingFile name="QueriesFile"
+                     fileName="${LOG_DIR}/queries.log"
+                     filePattern="${LOG_DIR}/queries-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="${LOG_DIR}" maxDepth="1">
+                    <IfFileName glob="queries-*.log.gz" />
+                    <IfLastModified age="30d" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+        <!-- Аппендер для ошибок -->
+        <RollingFile name="ErrorsFile"
+                     fileName="${LOG_DIR}/errors.log"
+                     filePattern="${LOG_DIR}/errors-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${LOG_PATTERN}%ex{full}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="${LOG_DIR}" maxDepth="1">
+                    <IfFileName glob="errors-*.log.gz" />
+                    <IfLastModified age="30d" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+        <!-- Асинхронный аппендер для производительности -->
+        <Async name="AsyncQueries">
+            <AppenderRef ref="QueriesFile"/>
+        </Async>
+
+        <Async name="AsyncErrors">
+            <AppenderRef ref="ErrorsFile"/>
+        </Async>
+    </Appenders>
+
+    <Loggers>
+        <!-- Логгер для запросов -->
+        <Logger name="queries" level="INFO" additivity="false">
+            <AppenderRef ref="AsyncQueries"/>
+        </Logger>
+
+        <!-- Логгер для ошибок -->
+        <Logger name="errors" level="ERROR" additivity="false">
+            <AppenderRef ref="AsyncErrors"/>
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Корневой логгер -->
+        <Root level="INFO">
+            <AppenderRef ref="Console" level="ERROR"/>
+        </Root>
+    </Loggers>
+</Configuration>
